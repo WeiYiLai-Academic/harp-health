@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>豎琴療癒身心評估 | Hope Harp Studio</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Noto Sans TC', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    #root { padding: 16px; max-width: 480px; margin: 0 auto; }
+    .card {
+      background: #1e293b;
+      border-radius: 20px;
+      padding: 24px;
+      margin: 16px 0;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    .label { font-size: 18px; font-weight: 600; color: #e2e8f0; display: block; margin-bottom: 12px; }
+    .input {
+      width: 100%;
+      padding: 14px;
+      font-size: 18px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #f1f5f9;
+      text-align: center;
+    }
+    .btn-primary {
+      width: 100%;
+      padding: 18px;
+      font-size: 19px;
+      font-weight: 700;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #e2b714, #c89b0d);
+      color: #0f172a;
+      border: none;
+      margin: 12px 0;
+      cursor: pointer;
+    }
+    .btn-secondary {
+      width: 100%;
+      padding: 16px;
+      font-size: 17px;
+      border-radius: 16px;
+      background: #334155;
+      color: #e2e8f0;
+      border: none;
+      margin: 8px 0;
+      cursor: pointer;
+    }
+    .em-btn {
+      padding: 16px;
+      font-size: 17px;
+      border-radius: 16px;
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 8px 0;
+      cursor: pointer;
+    }
+    .em-btn.selected {
+      background: #334155;
+      border-color: #e2b714;
+      box-shadow: 0 0 0 3px rgba(226,183,20,0.3);
+    }
+    .number-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .number-btn {
+      width: 64px;
+      height: 64px;
+      font-size: 32px;
+      border-radius: 12px;
+      background: #334155;
+      color: #e2e8f0;
+      border: none;
+      cursor: pointer;
+    }
+    .progress-bar {
+      height: 8px;
+      background: #334155;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 16px 0;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #e2b714, #c89b0d);
+      transition: width 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+const MELODIES = [
+  { id: "peace", name: "靜心", sub: "C Major · Adagio", color: "#7ec8c8",
+    notes: [{f:261.63,d:0.7},{f:293.66,d:0.5},{f:329.63,d:0.7},{f:349.23,d:0.5},{f:392,d:0.9},{f:440,d:0.5},{f:493.88,d:0.7},{f:523.25,d:1.2},{f:493.88,d:0.5},{f:440,d:0.7},{f:392,d:0.9},{f:349.23,d:0.5},{f:329.63,d:0.7},{f:293.66,d:0.5},{f:261.63,d:1.5}] },
+  { id: "hope",  name: "希望", sub: "G Major · Andante", color: "#e8c87a",
+    notes: [{f:392,d:0.4},{f:440,d:0.4},{f:493.88,d:0.6},{f:523.25,d:0.4},{f:587.33,d:0.6},{f:659.25,d:0.4},{f:739.99,d:0.6},{f:783.99,d:1},{f:739.99,d:0.4},{f:659.25,d:0.6},{f:587.33,d:0.4},{f:523.25,d:0.6},{f:493.88,d:0.4},{f:440,d:0.4},{f:392,d:1.2}] },
+  { id: "heal",  name: "療癒", sub: "A Minor · Largo", color: "#b8a0d8",
+    notes: [{f:220,d:1.2},{f:246.94,d:1},{f:261.63,d:1.2},{f:293.66,d:1},{f:329.63,d:1.4},{f:349.23,d:1},{f:392,d:1.2},{f:440,d:2},{f:392,d:1},{f:349.23,d:1.2},{f:329.63,d:1},{f:293.66,d:1.2},{f:261.63,d:1},{f:246.94,d:1},{f:220,d:2.4}] },
+];
+
+const EMOTIONS = [
+  {id:"calm",   label:"平靜", emoji:"😌"},
+  {id:"joy",    label:"喜悅", emoji:"😊"},
+  {id:"relax",  label:"放鬆", emoji:"😴"},
+  {id:"hopeful",label:"充滿希望", emoji:"🌟"},
+  {id:"anxious",label:"焦慮", emoji:"😰"},
+  {id:"sad",    label:"低落", emoji:"😢"},
+  {id:"energy", label:"有活力", emoji:"⚡"},
+  {id:"neutral",label:"平淡", emoji:"😐"},
+];
+
+function NumberInput({ label, value, onChange, min = 40, max = 180, step = 1 }) {
+  const num = parseInt(value) || min;
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div className="label">{label}</div>
+      <div className="number-controls">
+        <button className="number-btn" onClick={() => onChange(Math.max(min, num - step).toString())}>-</button>
+        <input className="input" type="number" value={value} onChange={e => onChange(e.target.value)} min={min} max={max} />
+        <button className="number-btn" onClick={() => onChange(Math.min(max, num + step).toString())}>+</button>
+      </div>
+    </div>
+  );
+}
+
+function EmotionSelector({ selected, onToggle, max = 3 }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      {EMOTIONS.map(em => {
+        const isSelected = selected.includes(em.id);
+        return (
+          <button
+            key={em.id}
+            className={`em-btn ${isSelected ? "selected" : ""}`}
+            onClick={() => {
+              if (isSelected || selected.length < max) onToggle(em.id);
+            }}
+          >
+            <span style={{ fontSize: 28 }}>{em.emoji}</span>
+            <span>{em.label}</span>
+            {isSelected && <span style={{ marginLeft: "auto", color: "#e2b714" }}>✓</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function App() {
+  const [step, setStep] = useState(0); // 0=首頁, 1=選旋律, 2=前生理, 3=前情緒, 4=播放, 5=後生理, 6=後情緒, 7=報告
+  const [melody, setMelody] = useState(MELODIES[0]);
+  const [pre, setPre] = useState({ hr: "", sbp: "", dbp: "", emotions: [] });
+  const [post, setPost] = useState({ hr: "", sbp: "", dbp: "", emotions: [] });
+  const [progress, setProgress] = useState(0);
+  const [done, setDone] = useState(false);
+  const [ts, setTs] = useState("");
+  const [exporting, setExporting] = useState(false);
+
+  const audioCtxRef = useRef(null);
+
+  const playMelody = () => {
+    if (audioCtxRef.current) audioCtxRef.current.close();
+    setProgress(0);
+    setDone(false);
+
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtxRef.current = ctx;
+    let t = ctx.currentTime + 0.05;
+    const total = melody.notes.reduce((s, n) => s + n.d, 0);
+    let elapsed = 0;
+
+    melody.notes.forEach((note, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(note.f, t);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.28, t + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + note.d - 0.06);
+      osc.start(t);
+      osc.stop(t + note.d);
+      elapsed += note.d;
+      const pct = elapsed / total;
+      setTimeout(() => setProgress(pct), Math.max(0, (t - ctx.currentTime) * 1000));
+      t += note.d;
+    });
+
+    setTimeout(() => {
+      ctx.close().catch(() => {});
+      setDone(true);
+    }, (t - ctx.currentTime + 0.4) * 1000);
+  };
+
+  useEffect(() => {
+    if (step === 7) setTs(new Date().toLocaleString("zh-TW"));
+  }, [step]);
+
+  const exportPDF = async () => {
+    setExporting(true);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const W = 210, pad = 20;
+    let y = 20;
+
+    // 簡化版 PDF（可再擴充）
+    doc.setFontSize(20);
+    doc.setTextColor(226, 183, 20);
+    doc.text("豎琴療癒評估報告", W/2, y, { align: "center" });
+    y += 12;
+    doc.setFontSize(12);
+    doc.setTextColor(200);
+    doc.text(ts, W/2, y, { align: "center" });
+    y += 20;
+
+    doc.setFontSize(14);
+    doc.text(`旋律：${melody.name} (${melody.sub})`, pad, y);
+    y += 12;
+
+    // 前後生理
+    ["心跳 (bpm)", "收縮壓 (mmHg)", "舒張壓 (mmHg)"].forEach((lbl, i) => {
+      const keys = ["hr","sbp","dbp"];
+      const pv = pre[keys[i]] || "—";
+      const av = post[keys[i]] || "—";
+      doc.text(`${lbl} 前：${pv} → 後：${av}`, pad, y);
+      y += 10;
+    });
+    y += 10;
+
+    doc.text("前情緒：" + (pre.emotions.map(id=>EMOTIONS.find(e=>e.id===id)?.label||"").join("、") || "無"), pad, y);
+    y += 10;
+    doc.text("後情緒：" + (post.emotions.map(id=>EMOTIONS.find(e=>e.id===id)?.label||"").join("、") || "無"), pad, y);
+
+    doc.save(`harp-assessment-${Date.now()}.pdf`);
+    setExporting(false);
+  };
+
+  const goBack = () => setStep(s => Math.max(0, s-1));
+
+  if (step === 0) {
+    return (
+      <div style={{ textAlign: "center", padding: "60px 20px 40px" }}>
+        <div style={{ fontSize: "80px", marginBottom: "24px" }}>🪉</div>
+        <h1 style={{ fontSize: "32px", color: "#e2b714", marginBottom: "16px" }}>
+          豎琴療癒身心評估
+        </h1>
+        <p style={{ fontSize: "18px", lineHeight: 1.6, color: "#cbd5e1", marginBottom: "40px" }}>
+          只需 8–12 分鐘<br/>
+          看看音樂如何幫助您<br/>
+          放鬆、減壓、找回平靜
+        </p>
+        <button className="btn-primary" onClick={() => setStep(1)}>
+          開始體驗 →
+        </button>
+      </div>
+    );
+  }
+
+  if (step === 1) {
+    return (
+      <div>
+        <div className="card">
+          <div className="label" style={{ textAlign: "center", fontSize: 22 }}>請選擇一首旋律</div>
+          {MELODIES.map(m => (
+            <div
+              key={m.id}
+              onClick={() => setMelody(m)}
+              style={{
+                padding: "16px",
+                margin: "12px 0",
+                borderRadius: 16,
+                background: melody.id === m.id ? "rgba(226,183,20,0.15)" : "#0f172a",
+                border: melody.id === m.id ? "2px solid #e2b714" : "1px solid #334155",
+                textAlign: "center",
+                cursor: "pointer"
+              }}
+            >
+              <div style={{ fontSize: 20, fontWeight: 600 }}>{m.name}</div>
+              <div style={{ color: "#94a3b8", fontSize: 15 }}>{m.sub}</div>
+            </div>
+          ))}
+        </div>
+        <button className="btn-primary" onClick={() => setStep(2)}>確認並繼續</button>
+        <button className="btn-secondary" onClick={goBack}>← 上一步</button>
+      </div>
+    );
+  }
+
+  if (step === 2) {
+    return (
+      <div>
+        <div className="card">
+          <div className="label" style={{ fontSize: 22, textAlign: "center" }}>聆聽前 · 生理數據</div>
+          <NumberInput label="心跳 (bpm)" value={pre.hr} onChange={v=>setPre(p=>({...p,hr:v}))} min={40} max={140} />
+          <NumberInput label="收縮壓 (mmHg)" value={pre.sbp} onChange={v=>setPre(p=>({...p,sbp:v}))} min={80} max={180} step={2} />
+          <NumberInput label="舒張壓 (mmHg)" value={pre.dbp} onChange={v=>setPre(p=>({...p,dbp:v}))} min={50} max={120} step={2} />
+        </div>
+        <button className="btn-primary" onClick={() => setStep(3)}>下一步：情緒 →</button>
+        <button className="btn-secondary" onClick={goBack}>← 上一步</button>
+      </div>
+    );
+  }
+
+  if (step === 3) {
+    return (
+      <div>
+        <div className="card">
+          <div className="label" style={{ fontSize: 22, textAlign: "center" }}>現在的心情（最多選 3 個）</div>
+          <EmotionSelector
+            selected={pre.emotions}
+            onToggle={id => setPre(p => {
+              let arr = p.emotions || [];
+              if (arr.includes(id)) return {...p, emotions: arr.filter(x=>x!==id)};
+              if (arr.length >= 3) return p;
+              return {...p, emotions: [...arr, id]};
+            })}
+          />
+        </div>
+        <button className="btn-primary" onClick={() => { playMelody(); setStep(4); }}>開始播放旋律</button>
+        <button className="btn-secondary" onClick={goBack}>← 上一步</button>
+      </div>
+    );
+  }
+
+  if (step === 4) {
+    return (
+      <div className="card" style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 24, fontWeight: 600, color: melody.color, marginBottom: 8 }}>
+          {melody.name}
+        </div>
+        <div style={{ color: "#94a3b8", marginBottom: 24 }}>{melody.sub}</div>
+
+        <div style={{ height: 80, display: "flex", alignItems: "flex-end", gap: 6, justifyContent: "center", margin: "24px 0" }}>
+          {melody.notes.map((_, i) => (
+            <div key={i} style={{
+              flex: 1,
+              maxWidth: 12,
+              height: 20 + Math.random() * 60,
+              background: i / melody.notes.length < progress ? melody.color : "#334155",
+              borderRadius: "6px 6px 0 0",
+              transition: "background 0.4s"
+            }} />
+          ))}
+        </div>
+
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
+        </div>
+        <div style={{ color: "#94a3b8" }}>{Math.round(progress * 100)}%</div>
+
+        {done ? (
+          <>
+            <div style={{ fontSize: 20, color: "#e2b714", margin: "32px 0" }}>播放完畢</div>
+            <button className="btn-primary" onClick={() => setStep(5)}>繼續評估 →</button>
+          </>
+        ) : (
+          <p style={{ fontSize: 17, color: "#cbd5e1", lineHeight: 1.6, marginTop: 32 }}>
+            請閉上眼睛<br/>靜靜地感受旋律…
+          </p>
+        )}
+
+        <button className="btn-secondary" onClick={goBack} style={{ marginTop: 24 }}>← 中斷並返回</button>
+      </div>
+    );
+  }
+
+  // 後測生理與情緒（類似前測）
+  if (step === 5) {
+    return (
+      <div>
+        <div className="card">
+          <div className="label" style={{ fontSize: 22, textAlign: "center" }}>聆聽後 · 生理數據</div>
+          <NumberInput label="心跳 (bpm)" value={post.hr} onChange={v=>setPost(p=>({...p,hr:v}))} min={40} max={140} />
+          <NumberInput label="收縮壓 (mmHg)" value={post.sbp} onChange={v=>setPost(p=>({...p,sbp:v}))} min={80} max={180} step={2} />
+          <NumberInput label="舒張壓 (mmHg)" value={post.dbp} onChange={v=>setPost(p=>({...p,dbp:v}))} min={50} max={120} step={2} />
+        </div>
+        <button className="btn-primary" onClick={() => setStep(6)}>下一步：心情 →</button>
+        <button className="btn-secondary" onClick={goBack}>← 上一步</button>
+      </div>
+    );
+  }
+
+  if (step === 6) {
+    return (
+      <div>
+        <div className="card">
+          <div className="label" style={{ fontSize: 22, textAlign: "center" }}>聆聽後的心情（最多選 3 個）</div>
+          <EmotionSelector
+            selected={post.emotions}
+            onToggle={id => setPost(p => {
+              let arr = p.emotions || [];
+              if (arr.includes(id)) return {...p, emotions: arr.filter(x=>x!==id)};
+              if (arr.length >= 3) return p;
+              return {...p, emotions: [...arr, id]};
+            })}
+          />
+        </div>
+        <button className="btn-primary" onClick={() => setStep(7)}>查看報告</button>
+        <button className="btn-secondary" onClick={goBack}>← 上一步</button>
+      </div>
+    );
+  }
+
+  if (step === 7) {
+    return (
+      <div>
+        <div className="card">
+          <div style={{ fontSize: 24, color: "#e2b714", textAlign: "center", marginBottom: 16 }}>您的評估報告</div>
+          <div style={{ color: "#94a3b8", marginBottom: 12 }}>{ts}</div>
+          <div style={{ margin: "16px 0" }}>
+            <strong>使用的旋律：</strong> {melody.name} ({melody.sub})
+          </div>
+
+          <div style={{ margin: "24px 0" }}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>生理變化</div>
+            <div>心跳：{pre.hr || "—"} → {post.hr || "—"}</div>
+            <div>收縮壓：{pre.sbp || "—"} → {post.sbp || "—"}</div>
+            <div>舒張壓：{pre.dbp || "—"} → {post.dbp || "—"}</div>
+          </div>
+
+          <div style={{ margin: "24px 0" }}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>心情變化</div>
+            <div>前：{pre.emotions.map(id=>EMOTIONS.find(e=>e.id===id)?.label||"").join("、") || "無"}</div>
+            <div>後：{post.emotions.map(id=>EMOTIONS.find(e=>e.id===id)?.label||"").join("、") || "無"}</div>
+          </div>
+        </div>
+
+        <button className="btn-primary" onClick={exportPDF} disabled={exporting}>
+          {exporting ? "匯出中..." : "下載 PDF 報告"}
+        </button>
+        <button className="btn-primary" style={{ background: "linear-gradient(135deg, #4ade80, #22c55e)" }} onClick={() => setStep(0)}>
+          完成！再做一次
+        </button>
+        <button className="btn-secondary" onClick={() => setStep(0)}>返回首頁</button>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
